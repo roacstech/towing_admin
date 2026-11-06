@@ -35,3 +35,4 @@ COPY --from=builder /app/data ./data
 EXPOSE 3000
 
 CMD ["npm", "run", "start"]
+
