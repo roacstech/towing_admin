@@ -26,26 +26,32 @@ export default function CustomerFeedbackReviewsPage() {
   const [search, setSearch] = useState("");
   const [selectedRating, setSelectedRating] = useState<number | "all">("all");
 
-  const fetchReviews = useCallback(async () => {
-    setLoading(true);
+  const fetchReviews = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     try {
-      const res = await fetch("/api/admin/reviews", { cache: "no-store" });
+      const res = await fetch("/api/admin/reviews", {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        return;
+      }
       const json = await res.json();
-      if (json.success && Array.isArray(json.data)) {
+      if (json && json.success && Array.isArray(json.data)) {
         setReviews(json.data);
       }
-    } catch (err) {
-      console.error("Failed to load reviews:", err);
+    } catch {
+      // Ignore background poll errors during dev server hot-reload or brief network reconnects
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchReviews();
+    fetchReviews(true);
     const interval = setInterval(() => {
-      fetchReviews();
-    }, 3000);
+      fetchReviews(false);
+    }, 4000);
     return () => clearInterval(interval);
   }, [fetchReviews]);
 
