@@ -39,42 +39,36 @@ interface DriverUser {
   updated_at: string | null;
 }
 
-// 6 App Lifecycle Stages - Strictly NO subtexts in KPI cards
-const STATUS_STAGES = [
+// 6 App Lifecycle Stages Configuration
+const STATUS_STAGES_CONFIG = [
   {
     key: "awaiting_driver",
     label: "AWAITING DRIVER",
-    count: 3,
     barColor: "bg-[#f59e0b]", // Amber
   },
   {
     key: "driver_accepted",
     label: "DRIVER ACCEPTED",
-    count: 4,
     barColor: "bg-[#2563eb]", // Blue
   },
   {
     key: "en_route_pickup",
     label: "EN ROUTE TO PICKUP",
-    count: 5,
     barColor: "bg-[#10b981]", // Emerald
   },
   {
     key: "arrived_scene",
     label: "ARRIVED AT SCENE",
-    count: 3,
     barColor: "bg-[#059669]", // Dark Green
   },
   {
     key: "towing_transit",
     label: "TOWING IN TRANSIT",
-    count: 6,
     barColor: "bg-[#0284c7]", // Sky Blue
   },
   {
     key: "arrived_dropoff",
     label: "ARRIVED AT DROPOFF",
-    count: 2,
     barColor: "bg-[#a855f7]", // Purple
   },
 ];
@@ -197,6 +191,7 @@ const METRICS_30_DAYS = [
 export default function DashboardOverviewPage() {
   const [period, setPeriod] = useState<"7" | "30">("7");
   const [drivers, setDrivers] = useState<DriverUser[]>([]);
+  const [tows, setTows] = useState<any[]>([]);
   const [customerCount, setCustomerCount] = useState<number>(0);
   const [loadingDrivers, setLoadingDrivers] = useState(true);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
@@ -206,7 +201,7 @@ export default function DashboardOverviewPage() {
 
   const metricsData = period === "7" ? METRICS_7_DAYS : METRICS_30_DAYS;
 
-  // Fetch dynamic driver & customer data strictly from API routes
+  // Fetch dynamic driver, customer & live tow data strictly from API routes
   const loadDashboardData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
     else if (isInitialMount.current) {
@@ -216,9 +211,10 @@ export default function DashboardOverviewPage() {
     setFetchError(null);
 
     try {
-      const [driversRes, customersRes] = await Promise.allSettled([
+      const [driversRes, customersRes, towsRes] = await Promise.allSettled([
         fetch("/api/drivers", { cache: "no-store" }),
         fetch("/api/customers", { cache: "no-store" }),
+        fetch("/api/tows", { cache: "no-store" }),
       ]);
 
       if (driversRes.status === "fulfilled") {
@@ -238,6 +234,13 @@ export default function DashboardOverviewPage() {
           } else if (Array.isArray(custJson.data)) {
             setCustomerCount(custJson.data.length);
           }
+        }
+      }
+
+      if (towsRes.status === "fulfilled") {
+        const towsJson = await towsRes.value.json();
+        if (towsJson.success && Array.isArray(towsJson.data)) {
+          setTows(towsJson.data);
         }
       }
     } catch (err: unknown) {
@@ -263,6 +266,31 @@ export default function DashboardOverviewPage() {
 
   const onlineDrivers = drivers.filter((d) => d.is_online);
   const offlineDrivers = drivers.filter((d) => !d.is_online);
+
+  // Dynamic live stage counts strictly derived from live dispatch database
+  const stageCounts: Record<string, number> = {
+    awaiting_driver: tows.filter((t) =>
+      ["pending", "pending_admin_dispatch", "awaiting_driver", "needs_driver"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+    driver_accepted: tows.filter((t) =>
+      ["accepted", "driver_accepted"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+    en_route_pickup: tows.filter((t) =>
+      ["en_route", "en_route_pickup"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+    arrived_scene: tows.filter((t) =>
+      ["on_scene", "arrived", "arrived_scene"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+    towing_transit: tows.filter((t) =>
+      ["towing", "in_progress", "towing_transit", "active"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+    arrived_dropoff: tows.filter((t) =>
+      ["arrived_dropoff"].includes((t.status || "").toLowerCase().trim())
+    ).length,
+  };
+
+  const completedTowsCount = tows.filter((t) => (t.status || "").toLowerCase().trim() === "completed").length;
+  const cancelledTowsCount = tows.filter((t) => (t.status || "").toLowerCase().trim() === "cancelled").length;
 
   return (
     <div className="space-y-5">
@@ -294,14 +322,14 @@ export default function DashboardOverviewPage() {
 
         {/* 6 Stage KPI Cards - Clean, Big Numbers & Clear Labels, NO Subtexts */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-          {STATUS_STAGES.map((stage) => (
+          {STATUS_STAGES_CONFIG.map((stage) => (
             <div
               key={stage.key}
               className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs hover:border-slate-300 transition-colors"
             >
               <div>
                 <p className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-                  {stage.count}
+                  {stageCounts[stage.key] ?? 0}
                 </p>
                 <p className="text-xs sm:text-[13px] font-medium tracking-wide text-slate-700 uppercase mt-1 truncate">
                   {stage.label}
@@ -366,7 +394,7 @@ export default function DashboardOverviewPage() {
           <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-xs hover:border-slate-300 transition-colors">
             <div>
               <p className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-                1,639
+                {completedTowsCount}
               </p>
               <p className="text-xs sm:text-[13px] font-medium tracking-wide text-slate-700 uppercase mt-1">
                 ALL TIME COMPLETED
@@ -379,7 +407,7 @@ export default function DashboardOverviewPage() {
           <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-4 shadow-xs hover:border-slate-300 transition-colors">
             <div>
               <p className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900">
-                275
+                {cancelledTowsCount}
               </p>
               <p className="text-xs sm:text-[13px] font-medium tracking-wide text-slate-700 uppercase mt-1">
                 ALL TIME CANCELLED

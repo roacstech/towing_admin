@@ -51,8 +51,22 @@ export async function GET(request: Request) {
     const driverUsers = rawDrivers.map((d: any) => {
       const driverName = (d.name || "").toLowerCase().trim();
 
-      // Find tows associated with this driver
-      const matchedTow = allTows.find((t: any) => {
+      // Find any ACTIVE tow currently assigned and in progress for this driver
+      const activeTow = allTows.find((t: any) => {
+        const towDriverName = (t.driver_name || "").toLowerCase().trim();
+        const towDriverId = String(t.driver_id || "").toLowerCase();
+        const matchesDriver =
+          (towDriverName && (towDriverName.includes(driverName) || driverName.includes(towDriverName))) ||
+          towDriverId === `drv-${d.id}` ||
+          towDriverId.includes(String(d.id));
+
+        if (!matchesDriver) return false;
+        const s = (t.status || "").toLowerCase().trim();
+        return ["accepted", "en_route", "on_scene", "arrived", "towing", "in_progress", "active", "arrived_dropoff"].includes(s);
+      });
+
+      // Also find the latest tow for historical stats (completed tows, truck model)
+      const latestTow = allTows.find((t: any) => {
         const towDriverName = (t.driver_name || "").toLowerCase().trim();
         const towDriverId = String(t.driver_id || "").toLowerCase();
         return (
@@ -62,21 +76,15 @@ export async function GET(request: Request) {
         );
       });
 
-      const towStatus = (matchedTow?.status || "").toLowerCase().trim();
-      const isTowActive = ["accepted", "en_route", "on_scene", "arrived", "towing", "in_progress", "active"].includes(towStatus);
+      const isTowActive = Boolean(activeTow);
 
-      // Check recent telemetry update
-      const updatedAt = matchedTow?.updated_at || matchedTow?.created_at;
-      const recentActivity = updatedAt ? (now - new Date(updatedAt).getTime()) < 1000 * 60 * 30 : false;
-
-      // Has active GPS
-      const hasLiveGps = matchedTow?.driver_lat != null && Number(matchedTow.driver_lat) !== 0;
-
-      // Override if explicitly set, otherwise auto-detected
+      // LIVE DATA ONLY: A driver is online ONLY IF:
+      // 1. Manually toggled online by admin via admin portal override, OR
+      // 2. Currently has an active live tow job in progress
       const hasOverride = driverStatusOverrides.has(d.id);
       const isOnline = hasOverride
         ? driverStatusOverrides.get(d.id)!
-        : Boolean(isTowActive || (hasLiveGps && recentActivity) || (driverName.includes("madhavan") && hasLiveGps));
+        : isTowActive;
 
       let onlineStatus: "online" | "on_trip" | "offline" = "offline";
       if (isOnline) {
@@ -112,14 +120,14 @@ export async function GET(request: Request) {
         ...d,
         rating: calculatedRating,
         review_count: driverReviews.length,
-        completed_tows: completedCount > 0 ? completedCount : (d.completed_tows || driverReviews.length),
+        completed_tows: completedCount > 0 ? completedCount : (d.completed_tows || 0),
         is_online: isOnline,
         online_status: onlineStatus,
-        active_tow_id: isTowActive ? matchedTow?.id : null,
-        active_tow_status: isTowActive ? matchedTow?.status : null,
-        truck_model: matchedTow?.tow_truck_info || d.truck_model || "2012, ford (Wheel-Lift)",
-        current_lat: matchedTow?.driver_lat || d.current_lat || null,
-        current_lng: matchedTow?.driver_lng || d.current_lng || null,
+        active_tow_id: isTowActive ? activeTow?.id : null,
+        active_tow_status: isTowActive ? activeTow?.status : null,
+        truck_model: activeTow?.tow_truck_info || latestTow?.tow_truck_info || d.truck_model || "2012, ford (Wheel-Lift)",
+        current_lat: isTowActive ? (activeTow?.driver_lat || null) : null,
+        current_lng: isTowActive ? (activeTow?.driver_lng || null) : null,
       };
     });
 

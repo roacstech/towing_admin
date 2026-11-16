@@ -125,12 +125,17 @@ export function LiveUSMap() {
             .toUpperCase()
             .slice(0, 2);
 
-          // Find active or matching tow for this driver
+          // Find active tow for this driver (must be actively in progress)
           const assignedTow = apiTows.find(
-            (t: any) =>
-              t.driver_id === `DRV-${d.id}` ||
-              (t.driver_name && t.driver_name.toLowerCase().includes(name.toLowerCase())) ||
-              (t.driver_id && String(t.driver_id).includes(String(d.id)))
+            (t: any) => {
+              const matchesDriver =
+                t.driver_id === `DRV-${d.id}` ||
+                (t.driver_name && t.driver_name.toLowerCase().includes(name.toLowerCase())) ||
+                (t.driver_id && String(t.driver_id).includes(String(d.id)));
+              if (!matchesDriver) return false;
+              const s = (t.status || "").toLowerCase().trim();
+              return ["accepted", "en_route", "on_scene", "arrived", "towing", "in_progress", "active", "arrived_dropoff"].includes(s);
+            }
           );
 
           // Resolve live GPS coordinates
@@ -156,11 +161,12 @@ export function LiveUSMap() {
             ? userLngNum
             : anchorLng + patrol.dLng;
 
-          // Resolve live dispatch status
-          const rawStatus = (assignedTow?.status || d.status || "waiting").toLowerCase().trim();
-          let resolvedStatus: DriverMarker["status"] = "waiting";
-          let resolvedLabel = "Waiting / Patrol";
-          let resolvedColor = "#f59e0b";
+          // Resolve live dispatch status: only active tows show in-progress states
+          const isDriverOnline = Boolean(d.is_online);
+          const rawStatus = (assignedTow?.status || "").toLowerCase().trim();
+          let resolvedStatus: DriverMarker["status"] = isDriverOnline ? "waiting" : "completed";
+          let resolvedLabel = isDriverOnline ? "Waiting / Standby" : "Offline / Standby";
+          let resolvedColor = isDriverOnline ? "#f59e0b" : "#94a3b8";
 
           if (rawStatus.includes("tow") || rawStatus === "active") {
             resolvedStatus = "towing";
@@ -174,14 +180,6 @@ export function LiveUSMap() {
             resolvedStatus = "en_route";
             resolvedLabel = "En Route to Pickup";
             resolvedColor = "#10b981";
-          } else if (rawStatus.includes("complet") || rawStatus === "done") {
-            resolvedStatus = "completed";
-            resolvedLabel = "Completed";
-            resolvedColor = "#0f172a";
-          } else if (rawStatus.includes("cancel")) {
-            resolvedStatus = "cancelled";
-            resolvedLabel = "Cancelled";
-            resolvedColor = "#ef4444";
           }
 
           return {
@@ -197,10 +195,10 @@ export function LiveUSMap() {
             statusLabel: resolvedLabel,
             color: resolvedColor,
             jobId: assignedTow?.id,
-            customer: assignedTow?.customer_name || "Madhavan M.047",
-            vehicle: assignedTow?.vehicle_name ? `${assignedTow.vehicle_name} (${assignedTow.license_plate || ""})` : "Tesla Model 3",
-            pickup: assignedTow?.pickup_address || "Onnipalayam Pudur, Coimbatore North",
-            dropoff: assignedTow?.drop_address || "Kurumbapalayam Road, Coimbatore",
+            customer: assignedTow?.customer_name,
+            vehicle: assignedTow?.vehicle_name ? `${assignedTow.vehicle_name} (${assignedTow.license_plate || ""})` : undefined,
+            pickup: assignedTow?.pickup_address,
+            dropoff: assignedTow?.drop_address,
             pickupLat: assignedTow?.pickup_lat ? Number(assignedTow.pickup_lat) : undefined,
             pickupLng: assignedTow?.pickup_lng ? Number(assignedTow.pickup_lng) : undefined,
             dropLat: assignedTow?.drop_lat ? Number(assignedTow.drop_lat) : undefined,
@@ -208,33 +206,6 @@ export function LiveUSMap() {
             isLiveGps: hasRealGps,
           };
         });
-
-        // Ensure driver madhavan is present with active GPS if tow exists
-        if (recentWithGps && !mapped.some((m) => m.name.toLowerCase().includes("madhavan"))) {
-          mapped.unshift({
-            id: "DRV-7701",
-            name: recentWithGps.driver_name || "madhavan",
-            initials: "MD",
-            phone: recentWithGps.driver_phone || "+91 97864 53128",
-            truck: recentWithGps.tow_truck_info || "2012, ford (Wheel-Lift)",
-            unit: "Unit #01 (Active)",
-            lat: Number(recentWithGps.driver_lat || anchorLat),
-            lng: Number(recentWithGps.driver_lng || anchorLng),
-            status: (recentWithGps.status === "accepted" ? "en_route" : recentWithGps.status) as any,
-            statusLabel: recentWithGps.status === "accepted" ? "En Route to Pickup" : "Active Tow",
-            color: "#10b981",
-            jobId: recentWithGps.id,
-            customer: recentWithGps.customer_name || "Madhavan M.047",
-            vehicle: recentWithGps.vehicle_name || "Tesla Model 3",
-            pickup: recentWithGps.pickup_address,
-            dropoff: recentWithGps.drop_address,
-            pickupLat: recentWithGps.pickup_lat ? Number(recentWithGps.pickup_lat) : undefined,
-            pickupLng: recentWithGps.pickup_lng ? Number(recentWithGps.pickup_lng) : undefined,
-            dropLat: recentWithGps.drop_lat ? Number(recentWithGps.drop_lat) : undefined,
-            dropLng: recentWithGps.drop_lng ? Number(recentWithGps.drop_lng) : undefined,
-            isLiveGps: true,
-          });
-        }
 
         if (isMounted) {
           setFleetDrivers(mapped);

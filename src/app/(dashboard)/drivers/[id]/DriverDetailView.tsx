@@ -47,7 +47,7 @@ export function DriverDetailView({ id }: DriverDetailViewProps) {
   const driverEmail = driver?.email || "driver@centraltowing.com";
   const driverPhone = driver?.phone || driver?.phone_number || "+1 (320) 555-0142";
   const vehicle = driver?.vehicle_model || driver?.vehicle || "2024 Peterbilt 337 (Flatbed Rollback)";
-  const isOnline = driver?.is_online !== false;
+  const isOnline = Boolean(driver?.is_online);
 
   return (
     <div className="space-y-4">
