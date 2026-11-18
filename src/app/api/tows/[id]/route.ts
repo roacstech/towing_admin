@@ -1,4 +1,19 @@
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
+
+function getInspectionPhotosForJob(cleanId: string) {
+  try {
+    const file = path.join(process.cwd(), "data", "inspection_photos.json");
+    if (!fs.existsSync(file)) return null;
+    const raw = fs.readFileSync(file, "utf-8");
+    const json = JSON.parse(raw);
+    const item = json[cleanId] || json[`TW-${cleanId}`] || json[cleanId.replace("TW-", "")];
+    return item?.inspection_photos || null;
+  } catch (_) {
+    return null;
+  }
+}
 
 export async function GET(
   request: Request,
@@ -50,6 +65,7 @@ export async function GET(
               raw_id: cleanId,
               customer_name: custName || "Madhavan M.047",
               customer_phone: custPhone || "+91 97864 53128",
+              inspection_photos: t.inspection_photos || getInspectionPhotosForJob(cleanId),
             },
           });
         }
@@ -77,6 +93,7 @@ export async function GET(
                 ...match,
                 id: `#${cleanId}`,
                 raw_id: cleanId,
+                inspection_photos: match.inspection_photos || getInspectionPhotosForJob(cleanId),
               },
             });
           }
@@ -103,6 +120,7 @@ export async function GET(
         total_cost: "$92.45",
         payment_method: "In-App Tow Pay",
         eta_or_duration: "4-8 min",
+        inspection_photos: getInspectionPhotosForJob(cleanId),
         created_at: new Date().toISOString(),
       },
     });
