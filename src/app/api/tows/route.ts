@@ -22,7 +22,7 @@ export async function GET() {
             "content-type": "application/json",
           },
           cache: "no-store",
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(12000),
         }),
         fetch(`${backendUrl}/api/tows?for_drivers=true`, {
           headers: {
@@ -30,7 +30,7 @@ export async function GET() {
             "content-type": "application/json",
           },
           cache: "no-store",
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(12000),
         }),
         fetch(`${backendUrl}/api/tows?is_admin=true&admin_key=${adminKey}`, {
           headers: {
@@ -38,7 +38,7 @@ export async function GET() {
             "content-type": "application/json",
           },
           cache: "no-store",
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(12000),
         }),
       ]);
 

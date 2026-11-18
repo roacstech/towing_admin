@@ -105,7 +105,7 @@ export default function CustomerFeedbackReviewsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={fetchReviews}
+          onClick={() => fetchReviews(true)}
           disabled={loading}
           className="gap-1 cursor-pointer self-start sm:self-auto"
         >

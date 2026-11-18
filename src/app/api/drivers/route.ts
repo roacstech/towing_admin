@@ -78,13 +78,17 @@ export async function GET(request: Request) {
 
       const isTowActive = Boolean(activeTow);
 
-      // LIVE DATA ONLY: A driver is online ONLY IF:
+      // LIVE DATA: A driver is online if:
       // 1. Manually toggled online by admin via admin portal override, OR
-      // 2. Currently has an active live tow job in progress
+      // 2. Currently has an active live tow job in progress (on_trip), OR
+      // 3. Telemetry/presence recently updated by Driver App (heartbeat/session within last 15 minutes)
+      const userUpdatedAt = d.updated_at ? new Date(d.updated_at).getTime() : 0;
+      const isRecentlyActive = userUpdatedAt > 0 && (now - userUpdatedAt) < 1000 * 60 * 15;
+
       const hasOverride = driverStatusOverrides.has(d.id);
       const isOnline = hasOverride
         ? driverStatusOverrides.get(d.id)!
-        : isTowActive;
+        : Boolean(isTowActive || isRecentlyActive);
 
       let onlineStatus: "online" | "on_trip" | "offline" = "offline";
       if (isOnline) {
