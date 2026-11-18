@@ -2,18 +2,15 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-function formatPhotoUrl(rawUrl: string | null | undefined, side: string): string | null {
+function formatPhotoUrl(rawUrl: string | null | undefined): string | null {
   if (!rawUrl) return null;
   const url = rawUrl.trim();
-  // Route any legacy blocked uploads/vehicles/ path to the public Towing app/services/cars/ folder
-  if (url.includes("uploads/vehicles/")) {
-    return `https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_${side}_view.png`;
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
   }
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    const cleanPath = url.replace(/^\//, "");
-    return `https://roacs-bucket.s3.ap-south-1.amazonaws.com/${encodeURI(cleanPath)}`;
-  }
-  return url;
+  const cleanPath = url.replace(/^\//, "");
+  return `https://roacs-bucket.s3.ap-south-1.amazonaws.com/${encodeURI(cleanPath)}`;
 }
 
 async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
@@ -26,10 +23,10 @@ async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
       const item = json[cleanId] || json[`TW-${cleanId}`] || json[cleanId.replace("TW-", "")];
       if (item?.inspection_photos && (item.inspection_photos.front || item.inspection_photos.back)) {
         return {
-          front: formatPhotoUrl(item.inspection_photos.front, "front"),
-          back: formatPhotoUrl(item.inspection_photos.back || item.inspection_photos.rear, "back"),
-          left: formatPhotoUrl(item.inspection_photos.left, "left"),
-          right: formatPhotoUrl(item.inspection_photos.right, "right"),
+          front: formatPhotoUrl(item.inspection_photos.front),
+          back: formatPhotoUrl(item.inspection_photos.back || item.inspection_photos.rear),
+          left: formatPhotoUrl(item.inspection_photos.left),
+          right: formatPhotoUrl(item.inspection_photos.right),
         };
       }
     }
@@ -52,10 +49,10 @@ async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
         const v = json.data?.[0];
         if (v && (v.photo_url || v.plate_image_url || v.asset_path || v.nickname)) {
           const photos = {
-            front: formatPhotoUrl(v.photo_url, "front"),
-            back: formatPhotoUrl(v.plate_image_url, "back"),
-            left: formatPhotoUrl(v.asset_path, "left"),
-            right: formatPhotoUrl(v.nickname, "right"),
+            front: formatPhotoUrl(v.photo_url),
+            back: formatPhotoUrl(v.plate_image_url),
+            left: formatPhotoUrl(v.asset_path),
+            right: formatPhotoUrl(v.nickname),
           };
 
           // Cache locally to data/inspection_photos.json
@@ -125,6 +122,10 @@ export async function GET(
             }
           }
 
+          const isCancelled = ["cancelled", "canceled"].includes(
+            String(t.status || "").toLowerCase().trim()
+          );
+
           return NextResponse.json({
             success: true,
             data: {
@@ -133,7 +134,13 @@ export async function GET(
               raw_id: cleanId,
               customer_name: custName || "Madhavan M.047",
               customer_phone: custPhone || "+91 97864 53128",
-              inspection_photos: t.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl)),
+              driver_name: isCancelled ? "" : t.driver_name,
+              driver_phone: isCancelled ? "" : t.driver_phone,
+              tow_truck_info: isCancelled ? "" : t.tow_truck_info,
+              total_cost: isCancelled ? "$0.00" : (t.total_cost || "$92.45"),
+              eta_or_duration: isCancelled ? "Cancelled" : t.eta_or_duration,
+              cancel_reason: t.cancel_reason || t.cancellation_reason || (isCancelled ? "Customer cancelled request" : undefined),
+              inspection_photos: isCancelled ? null : (t.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl))),
             },
           });
         }
@@ -155,13 +162,23 @@ export async function GET(
             (t: any) => String(t.id).replaceAll("#", "").trim() === cleanId
           );
           if (match) {
+            const isCancelled = ["cancelled", "canceled"].includes(
+              String(match.status || "").toLowerCase().trim()
+            );
+
             return NextResponse.json({
               success: true,
               data: {
                 ...match,
                 id: `#${cleanId}`,
                 raw_id: cleanId,
-                inspection_photos: match.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl)),
+                driver_name: isCancelled ? "" : match.driver_name,
+                driver_phone: isCancelled ? "" : match.driver_phone,
+                tow_truck_info: isCancelled ? "" : match.tow_truck_info,
+                total_cost: isCancelled ? "$0.00" : (match.total_cost || "$92.45"),
+                eta_or_duration: isCancelled ? "Cancelled" : match.eta_or_duration,
+                cancel_reason: match.cancel_reason || match.cancellation_reason || (isCancelled ? "Customer cancelled request" : undefined),
+                inspection_photos: isCancelled ? null : (match.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl))),
               },
             });
           }

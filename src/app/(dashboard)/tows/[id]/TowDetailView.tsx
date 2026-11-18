@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Phone, RefreshCw, Smartphone, Navigation, Radio, CheckCircle2, Camera, ExternalLink, X, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, RefreshCw, Smartphone, Navigation, Radio, CheckCircle2, Camera, ExternalLink, X, ShieldCheck, XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TowStatusBadge } from "@/components/tows/TowStatusBadge";
@@ -123,7 +123,10 @@ export function TowDetailView({ id }: TowDetailViewProps) {
     eta_or_duration: "4-8 min",
   };
 
-  const hasLiveDriverGps = data.driver_lat && data.driver_lng;
+  const isCancelled = ["cancelled", "canceled"].includes(
+    String(data.status || "").toLowerCase().trim()
+  );
+  const hasLiveDriverGps = !isCancelled && Boolean(data.driver_lat && data.driver_lng);
 
   // Derive pricing breakdown for admin inspection
   const totalCostNum = parseFloat(String(data.total_cost || "92.45").replace(/[^0-9.]/g, "")) || 92.45;
@@ -196,7 +199,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
               )}
             </div>
             <p className="text-[11px] font-normal text-slate-400 mt-0.5">
-              Live App Tow Request • Auto-refreshing every 3s
+              {isCancelled ? "Cancelled Dispatch Request • Closed" : "Live App Tow Request • Auto-refreshing every 3s"}
             </p>
           </div>
         </div>
@@ -211,6 +214,44 @@ export function TowDetailView({ id }: TowDetailViewProps) {
           </Link>
         </div>
       </div>
+
+      {/* Prominent Cancellation Notice Banner */}
+      {isCancelled && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-4 text-rose-900 shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 border border-rose-200">
+              <XCircle className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-rose-950">Dispatch Request Cancelled</h3>
+                <span className="rounded bg-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-900 uppercase tracking-wider">
+                  Voided
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-rose-800 leading-relaxed">
+                This tow request has been cancelled. No driver was dispatched, vehicle inspection is not required, and no charges were incurred.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-rose-950 bg-white/80 rounded-lg p-2.5 border border-rose-200">
+                <div>
+                  <span className="text-slate-500 font-normal">Reason for Cancellation: </span>
+                  <span className="font-semibold text-rose-900">
+                    {data.cancel_reason || data.cancellation_reason || data.reason || "Customer cancelled request"}
+                  </span>
+                </div>
+                {data.updated_at && (
+                  <div>
+                    <span className="text-slate-500 font-normal">Cancelled On: </span>
+                    <span className="font-medium text-slate-700">
+                      {new Date(data.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grid of Details */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -289,9 +330,11 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                 </p>
               </div>
               <div>
-                <p className="text-slate-400 font-normal text-[11px]">ESTIMATED ETA</p>
-                <p className="font-medium text-emerald-600 mt-0.5">
-                  {data.eta_or_duration || "4-8 min"}
+                <p className="text-slate-400 font-normal text-[11px]">
+                  {isCancelled ? "DISPATCH STATUS" : "ESTIMATED ETA"}
+                </p>
+                <p className={`font-medium mt-0.5 ${isCancelled ? "text-rose-600 font-semibold" : "text-emerald-600"}`}>
+                  {isCancelled ? "Cancelled" : (data.eta_or_duration || "4-8 min")}
                 </p>
               </div>
             </div>
@@ -329,81 +372,83 @@ export function TowDetailView({ id }: TowDetailViewProps) {
             </Card>
           )}
 
-          {/* Pre-Tow 4-Side Inspection Photos Card */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                <Camera className="h-4 w-4 text-blue-600 stroke-[1.75]" />
-                <span>Pre-Tow 4-Side Inspection Photos</span>
-              </CardTitle>
-              {data.inspection_photos &&
-              (data.inspection_photos.front ||
-                data.inspection_photos.back ||
-                data.inspection_photos.left ||
-                data.inspection_photos.right) ? (
-                <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
-                  <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                  Inspection Verified
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
-                  Inspection Pending
-                </span>
-              )}
-            </CardHeader>
-            <div className="space-y-3">
-              <p className="text-[11px] text-slate-500">
-                Mandatory condition verification photos captured by the driver upon arriving at the scene before vehicle hooking.
-              </p>
+          {/* Pre-Tow 4-Side Inspection Photos Card (Hidden when order is Cancelled) */}
+          {!isCancelled && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                  <Camera className="h-4 w-4 text-blue-600 stroke-[1.75]" />
+                  <span>Pre-Tow 4-Side Inspection Photos</span>
+                </CardTitle>
+                {data.inspection_photos &&
+                (data.inspection_photos.front ||
+                  data.inspection_photos.back ||
+                  data.inspection_photos.left ||
+                  data.inspection_photos.right) ? (
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
+                    <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                    Inspection Verified
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                    Inspection Pending
+                  </span>
+                )}
+              </CardHeader>
+              <div className="space-y-3">
+                <p className="text-[11px] text-slate-500">
+                  Mandatory condition verification photos captured by the driver upon arriving at the scene before vehicle hooking.
+                </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { key: "front", label: "Front View", icon: "🚗" },
-                  { key: "back", label: "Rear View", icon: "🚙" },
-                  { key: "left", label: "Left (Driver Side)", icon: "⬅️" },
-                  { key: "right", label: "Right (Pass. Side)", icon: "➡️" },
-                ].map(({ key, label, icon }) => {
-                  const photoUrl =
-                    data.inspection_photos?.[key] ||
-                    (key === "back" ? data.inspection_photos?.rear : undefined);
-                  return (
-                    <div
-                      key={key}
-                      className="group relative rounded-lg border border-slate-200 bg-slate-50 p-2 text-center transition-all hover:border-blue-300 hover:shadow-xs"
-                    >
-                      <div className="flex items-center justify-between text-[10px] font-medium text-slate-600 mb-1.5">
-                        <span className="truncate">{label}</span>
-                        <span>{icon}</span>
-                      </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { key: "front", label: "Front View", icon: "🚗" },
+                    { key: "back", label: "Rear View", icon: "🚙" },
+                    { key: "left", label: "Left (Driver Side)", icon: "⬅️" },
+                    { key: "right", label: "Right (Pass. Side)", icon: "➡️" },
+                  ].map(({ key, label, icon }) => {
+                    const photoUrl =
+                      data.inspection_photos?.[key] ||
+                      (key === "back" ? data.inspection_photos?.rear : undefined);
+                    return (
+                      <div
+                        key={key}
+                        className="group relative rounded-lg border border-slate-200 bg-slate-50 p-2 text-center transition-all hover:border-blue-300 hover:shadow-xs"
+                      >
+                        <div className="flex items-center justify-between text-[10px] font-medium text-slate-600 mb-1.5">
+                          <span className="truncate">{label}</span>
+                          <span>{icon}</span>
+                        </div>
 
-                      {photoUrl ? (
-                        <div
-                          className="relative aspect-4/3 w-full overflow-hidden rounded border border-slate-200 bg-white cursor-pointer group-hover:opacity-95"
-                          onClick={() => setPreviewPhoto({ url: photoUrl, label })}
-                        >
-                          <img
-                            src={photoUrl}
-                            alt={label}
-                            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-800 shadow-xs">
-                              Enlarge
-                            </span>
+                        {photoUrl ? (
+                          <div
+                            className="relative aspect-4/3 w-full overflow-hidden rounded border border-slate-200 bg-white cursor-pointer group-hover:opacity-95"
+                            onClick={() => setPreviewPhoto({ url: photoUrl, label })}
+                          >
+                            <img
+                              src={photoUrl}
+                              alt={label}
+                              className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors flex items-center justify-center">
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity rounded bg-white/90 px-2 py-0.5 text-[9px] font-semibold text-slate-800 shadow-xs">
+                                Enlarge
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="flex aspect-4/3 w-full flex-col items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-400">
-                          <Camera className="h-5 w-5 mb-1 stroke-[1.5]" />
-                          <span className="text-[10px]">Awaiting Photo</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        ) : (
+                          <div className="flex aspect-4/3 w-full flex-col items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-400">
+                            <Camera className="h-5 w-5 mb-1 stroke-[1.5]" />
+                            <span className="text-[10px]">Awaiting Photo</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar: Customer, Driver, Fare */}
@@ -421,104 +466,142 @@ export function TowDetailView({ id }: TowDetailViewProps) {
             </div>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Assigned Driver</span>
-                {(!data.driver_name || data.driver_name.toLowerCase() === "unassigned") && (
-                  <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                    Needs Assignment
+          {isCancelled ? (
+            <Card className="border-rose-200 bg-rose-50/40">
+              <CardHeader>
+                <CardTitle className="text-rose-900 flex items-center gap-1.5">
+                  <XCircle className="h-4 w-4 text-rose-600" />
+                  <span>Cancellation &amp; Settlement</span>
+                </CardTitle>
+              </CardHeader>
+              <div className="text-xs space-y-2.5">
+                <div className="flex justify-between items-center py-1 border-b border-rose-100">
+                  <span className="text-slate-500 font-normal">Order Status</span>
+                  <span className="font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded text-[11px]">
+                    Cancelled
                   </span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <div className="text-xs space-y-3">
-              {assignSuccess && (
-                <div className="p-2.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Driver successfully assigned and dispatched!</span>
                 </div>
-              )}
+                <div className="py-1 border-b border-rose-100">
+                  <span className="text-slate-500 font-normal block text-[11px]">Reason of Cancellation</span>
+                  <span className="font-semibold text-rose-950 mt-0.5 block">
+                    {data.cancel_reason || data.cancellation_reason || data.reason || "Customer cancelled request"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-rose-100">
+                  <span className="text-slate-500 font-normal">Assigned Driver</span>
+                  <span className="font-medium text-slate-500 italic">None (Cancelled)</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-rose-100">
+                  <span className="text-slate-500 font-normal">Total Amount Billed</span>
+                  <span className="font-bold text-slate-800">$0.00</span>
+                </div>
+                <div className="pt-1 text-[11px] text-slate-500 leading-relaxed">
+                  All driver dispatches and inspection obligations for this request have been voided. No charges were billed.
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Assigned Driver</span>
+                    {(!data.driver_name || data.driver_name.toLowerCase() === "unassigned") && (
+                      <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                        Needs Assignment
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <div className="text-xs space-y-3">
+                  {assignSuccess && (
+                    <div className="p-2.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-medium flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Driver successfully assigned and dispatched!</span>
+                    </div>
+                  )}
 
-              {data.driver_name && data.driver_name.toLowerCase() !== "unassigned" ? (
-                <div className="space-y-1.5">
-                  <p className="font-semibold text-slate-900 text-sm">{data.driver_name}</p>
-                  <p className="text-slate-500 font-normal">{data.tow_truck_info || "Tow Truck Verified"}</p>
-                  {data.driver_phone && (
-                    <p className="text-slate-500 font-normal flex items-center gap-1.5 pt-0.5">
-                      <Phone className="h-3 w-3 stroke-[1.75]" />
-                      {data.driver_phone}
-                    </p>
+                  {data.driver_name && data.driver_name.toLowerCase() !== "unassigned" ? (
+                    <div className="space-y-1.5">
+                      <p className="font-semibold text-slate-900 text-sm">{data.driver_name}</p>
+                      <p className="text-slate-500 font-normal">{data.tow_truck_info || "Tow Truck Verified"}</p>
+                      {data.driver_phone && (
+                        <p className="text-slate-500 font-normal flex items-center gap-1.5 pt-0.5">
+                          <Phone className="h-3 w-3 stroke-[1.75]" />
+                          {data.driver_phone}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 space-y-2">
+                      <p className="text-amber-800 font-medium text-[11px] leading-snug">
+                        All nearby drivers timed out or passed. Manual admin assignment required:
+                      </p>
+                      <select
+                        value={selectedDriverId}
+                        onChange={(e) => setSelectedDriverId(e.target.value)}
+                        className="w-full rounded border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="">-- Choose Registered Driver --</option>
+                        {drivers.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name} ({d.online_status || "offline"}) - {d.truck_model || "Tow Truck"}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAssignDriver}
+                        disabled={!selectedDriverId || assigning}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-1.5 px-3 transition-colors cursor-pointer text-xs"
+                      >
+                        {assigning ? (
+                          <>
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            <span>Dispatching...</span>
+                          </>
+                        ) : (
+                          <span>Assign &amp; Dispatch Driver</span>
+                        )}
+                      </button>
+                    </div>
                   )}
                 </div>
-              ) : (
-                <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 space-y-2">
-                  <p className="text-amber-800 font-medium text-[11px] leading-snug">
-                    All nearby drivers timed out or passed. Manual admin assignment required:
-                  </p>
-                  <select
-                    value={selectedDriverId}
-                    onChange={(e) => setSelectedDriverId(e.target.value)}
-                    className="w-full rounded border border-amber-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
-                    <option value="">-- Choose Registered Driver --</option>
-                    {drivers.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} ({d.online_status || "offline"}) - {d.truck_model || "Tow Truck"}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAssignDriver}
-                    disabled={!selectedDriverId || assigning}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-1.5 px-3 transition-colors cursor-pointer text-xs"
-                  >
-                    {assigning ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        <span>Dispatching...</span>
-                      </>
-                    ) : (
-                      <span>Assign &amp; Dispatch Driver</span>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          </Card>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Fare &amp; Payment Details</CardTitle>
-            </CardHeader>
-            <div className="text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-normal">Service Base (Fixed)</span>
-                <span className="font-medium text-slate-900">${adminBaseFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-normal">Distance Rate</span>
-                <span className="font-normal text-slate-700">
-                  ${perMileRate.toFixed(2)}/mi (${perKmRate.toFixed(2)}/km)
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-normal">
-                  Distance Fare ({billableMiles.toFixed(1)} mi / {billableKm.toFixed(1)} km)
-                </span>
-                <span className="font-medium text-slate-900">${distanceCost.toFixed(2)}</span>
-              </div>
-              <div className="border-t border-slate-100 my-1 pt-1.5 flex justify-between">
-                <span className="text-slate-700 font-semibold">Total Fare</span>
-                <span className="font-bold text-slate-900 text-sm">{data.total_cost || "$92.45"}</span>
-              </div>
-              <div className="flex justify-between text-[11px] pt-0.5">
-                <span className="text-slate-400 font-normal">Payment Method</span>
-                <span className="font-medium text-emerald-600">{data.payment_method || "In-App Tow Pay"}</span>
-              </div>
-            </div>
-          </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Fare &amp; Payment Details</CardTitle>
+                </CardHeader>
+                <div className="text-xs space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-normal">Service Base (Fixed)</span>
+                    <span className="font-medium text-slate-900">${adminBaseFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-normal">Distance Rate</span>
+                    <span className="font-normal text-slate-700">
+                      ${perMileRate.toFixed(2)}/mi (${perKmRate.toFixed(2)}/km)
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 font-normal">
+                      Distance Fare ({billableMiles.toFixed(1)} mi / {billableKm.toFixed(1)} km)
+                    </span>
+                    <span className="font-medium text-slate-900">${distanceCost.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-slate-100 my-1 pt-1.5 flex justify-between">
+                    <span className="text-slate-700 font-semibold">Total Fare</span>
+                    <span className="font-bold text-slate-900 text-sm">{data.total_cost || "$92.45"}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] pt-0.5">
+                    <span className="text-slate-400 font-normal">Payment Method</span>
+                    <span className="font-medium text-emerald-600">{data.payment_method || "In-App Tow Pay"}</span>
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
         </div>
       </div>
 

@@ -1,37 +1,4 @@
 {
-  "40967": {
-    "job_id": "40967",
-    "inspection_photos": {
-      "front": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_front_view.png",
-      "back": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_back_view.png",
-      "left": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_left_view.png",
-      "right": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_right_view.png"
-    },
-    "uploaded_at": "2026-11-18T12:11:39.477Z",
-    "is_complete": true
-  },
-  "79144": {
-    "job_id": "79144",
-    "inspection_photos": {
-      "front": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_front_view.png",
-      "back": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_back_view.png",
-      "left": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_left_view.png",
-      "right": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_right_view.png"
-    },
-    "uploaded_at": "2026-11-18T12:11:39.477Z",
-    "is_complete": true
-  },
-  "TW-40967": {
-    "job_id": "TW-40967",
-    "inspection_photos": {
-      "front": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_front_view.png",
-      "back": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_back_view.png",
-      "left": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_left_view.png",
-      "right": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_right_view.png"
-    },
-    "uploaded_at": "2026-11-18T12:11:39.477Z",
-    "is_complete": true
-  },
   "TW-79144": {
     "job_id": "TW-79144",
     "inspection_photos": {
@@ -40,7 +7,18 @@
       "left": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_left_view.png",
       "right": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_right_view.png"
     },
-    "uploaded_at": "2026-11-18T12:11:39.476Z",
+    "uploaded_at": "2026-11-18T12:12:15.368154Z",
+    "is_complete": true
+  },
+  "TW-42426": {
+    "job_id": "TW-42426",
+    "inspection_photos": {
+      "front": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_TW-42426_front_1795005058570.jpg",
+      "back": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_TW-42426_back_1795005066957.jpg",
+      "left": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_TW-42426_left_1795005076241.jpg",
+      "right": "https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_TW-42426_right_1795005084951.jpg"
+    },
+    "uploaded_at": "2026-11-18T18:01:25.451760",
     "is_complete": true
   }
 }

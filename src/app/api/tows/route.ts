@@ -89,12 +89,13 @@ export async function GET() {
           }
         }
 
+        const statusLower = String(t.status || "").toLowerCase().trim();
+        const isCancelled = statusLower === "cancelled" || statusLower === "canceled";
+
         const isUnassigned =
           !t.driver_name ||
           t.driver_name.toLowerCase().trim() === "unassigned" ||
-          ["pending", "pending_admin_dispatch", "awaiting_driver", "needs_driver"].includes(
-            String(t.status || "").toLowerCase().trim()
-          );
+          ["pending", "pending_admin_dispatch", "awaiting_driver", "needs_driver"].includes(statusLower);
 
         return {
           ...t,
@@ -102,14 +103,15 @@ export async function GET() {
           raw_id: String(t.id).replaceAll("#", "").trim(),
           customer_name: custName || "Madhavan M.047",
           customer_phone: custPhone || "+91 97864 53128",
-          driver_name: isUnassigned ? "" : (t.driver_name || "madhavan"),
+          driver_name: isCancelled ? "" : isUnassigned ? "" : (t.driver_name || "madhavan"),
           status: t.status || (isUnassigned ? "pending_admin_dispatch" : "accepted"),
-          total_cost: t.total_cost || "$92.45",
+          total_cost: isCancelled ? "$0.00" : (t.total_cost || "$92.45"),
           service_title: t.service_title || "Light-Duty Towing",
           vehicle_name: t.vehicle_name || "Tesla Model 3",
           license_plate: t.license_plate || "TN 59 CT 2484",
           pickup_address: t.pickup_address || "Pickup Location",
           drop_address: t.drop_address || "Drop Location",
+          cancel_reason: t.cancel_reason || t.cancellation_reason || (isCancelled ? "Customer cancelled request" : undefined),
         };
       });
 

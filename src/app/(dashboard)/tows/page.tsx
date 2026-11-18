@@ -144,8 +144,9 @@ export default function TowsListPage() {
 
   const needsAdminCount = tows.filter((t) => {
     const s = (t.status || "").toLowerCase().trim();
+    const isCancelled = ["cancelled", "canceled"].includes(s);
     const isUnassigned = !t.driver_name || t.driver_name.toLowerCase().trim() === "unassigned";
-    return s.includes("admin_dispatch") || (s.includes("pending") && isUnassigned);
+    return !isCancelled && (s.includes("admin_dispatch") || (s.includes("pending") && isUnassigned));
   }).length;
 
   return (
@@ -309,6 +310,9 @@ export default function TowsListPage() {
               ) : (
                 filteredTows.map((tow) => {
                   const targetId = tow.raw_id || String(tow.id).replaceAll("#", "").trim();
+                  const isCancelled = ["cancelled", "canceled"].includes(
+                    String(tow.status || "").toLowerCase().trim()
+                  );
                   return (
                     <tr
                       key={tow.id}
@@ -367,7 +371,11 @@ export default function TowsListPage() {
 
                       {/* 5. ASSIGNED DRIVER */}
                       <td className="w-[190px] min-w-[190px] px-4 py-3.5 align-top">
-                        {!tow.driver_name || tow.driver_name.toLowerCase() === "unassigned" ? (
+                        {isCancelled ? (
+                          <span className="text-[11px] text-slate-400 italic font-normal">
+                            None (Cancelled)
+                          </span>
+                        ) : !tow.driver_name || tow.driver_name.toLowerCase() === "unassigned" ? (
                           <Link
                             href={`/tows/${encodeURIComponent(targetId)}`}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-50 border border-amber-300 text-amber-800 text-[11px] font-semibold hover:bg-amber-100 transition-colors shadow-2xs"
@@ -399,12 +407,21 @@ export default function TowsListPage() {
 
                       {/* 7. FARE */}
                       <td className="w-[110px] min-w-[110px] px-4 py-3.5 align-top text-right">
-                        <div className="font-semibold text-slate-900 text-xs">
-                          {tow.total_cost || "$92.45"}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate">
-                          {tow.payment_method || "In-App Tow Pay"}
-                        </div>
+                        {isCancelled ? (
+                          <>
+                            <div className="font-semibold text-slate-400 text-xs">—</div>
+                            <div className="text-[10px] text-rose-500 font-semibold mt-0.5">Cancelled</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-semibold text-slate-900 text-xs">
+                              {tow.total_cost || "$92.45"}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-normal mt-0.5 truncate">
+                              {tow.payment_method || "In-App Tow Pay"}
+                            </div>
+                          </>
+                        )}
                       </td>
 
                       {/* 8. ACTION */}
