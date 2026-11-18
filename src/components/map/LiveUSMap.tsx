@@ -27,6 +27,7 @@ interface DriverMarker {
   status: "waiting" | "dispatched" | "en_route" | "on_scene" | "towing" | "destination_arrival" | "completed" | "cancelled";
   statusLabel: string;
   color: string;
+  isOnline: boolean;
   jobId?: string;
   customer?: string;
   vehicle?: string;
@@ -173,7 +174,7 @@ export function LiveUSMap() {
           const rawStatus = (assignedTow?.status || "").toLowerCase().trim();
           let resolvedStatus: DriverMarker["status"] = isDriverOnline ? "waiting" : "completed";
           let resolvedLabel = isDriverOnline ? "Waiting / Standby" : "Offline / Standby";
-          let resolvedColor = isDriverOnline ? "#f59e0b" : "#94a3b8";
+          let resolvedColor = isDriverOnline ? "#16a34a" : "#dc2626";
 
           if (rawStatus.includes("tow") || rawStatus === "active") {
             resolvedStatus = "towing";
@@ -201,6 +202,7 @@ export function LiveUSMap() {
             status: resolvedStatus,
             statusLabel: resolvedLabel,
             color: resolvedColor,
+            isOnline: isDriverOnline,
             jobId: assignedTow?.id,
             customer: assignedTow?.customer_name,
             vehicle: assignedTow?.vehicle_name ? `${assignedTow.vehicle_name} (${assignedTow.license_plate || ""})` : undefined,
@@ -374,20 +376,23 @@ export function LiveUSMap() {
 
       // Add driver markers and live route polylines
       filteredDrivers.forEach((driver) => {
-        const isLive = driver.isLiveGps || driver.status === "en_route" || driver.status === "towing" || driver.status === "on_scene";
+        const markerBg = driver.isOnline ? "#16a34a" : "#dc2626";
+        const markerShadow = driver.isOnline
+          ? "0 4px 12px rgba(22, 163, 74, 0.45)"
+          : "0 4px 12px rgba(220, 38, 38, 0.4)";
 
         const markerIcon = L.divIcon({
           className: `custom-driver-marker-${driver.id}`,
           html: `
             <div style="position: relative; display: flex; align-items: center; justify-content: center;">
               ${
-                isLive
+                driver.isOnline
                   ? `<div style="
                       position: absolute;
                       width: 48px;
                       height: 48px;
                       border-radius: 50%;
-                      background-color: ${driver.color}33;
+                      background-color: rgba(22, 163, 74, 0.35);
                       animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
                     "></div>`
                   : ""
@@ -395,10 +400,10 @@ export function LiveUSMap() {
               <div style="
                 width: 36px;
                 height: 36px;
-                background-color: #0f172a;
-                border: 3px solid ${driver.color};
+                background-color: ${markerBg};
+                border: 3px solid #ffffff;
                 border-radius: 50%;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                box-shadow: ${markerShadow};
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -427,11 +432,12 @@ export function LiveUSMap() {
           <div style="font-family: inherit; font-size: 12px; min-width: 180px;">
             <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px;">
               <strong style="color: #0f172a;">${driver.name}</strong>
-              <span style="color: ${driver.color}; font-size: 10px; font-weight: 600; text-transform: uppercase;">● ${driver.statusLabel}</span>
+              <span style="color: ${markerBg}; font-size: 10px; font-weight: 600; text-transform: uppercase;">● ${driver.isOnline ? "Online" : "Offline"}</span>
             </div>
             <div style="color: #475569; font-size: 11px; line-height: 1.4;">
               <div>${driver.truck} (${driver.unit})</div>
-              ${driver.jobId ? `<div style="margin-top: 3px;"><b>Job:</b> ${driver.jobId}</div>` : ""}
+              ${driver.jobId ? `<div style="margin-top: 3px;"><b>Status:</b> ${driver.statusLabel}</div>` : ""}
+              ${driver.jobId ? `<div><b>Job:</b> ${driver.jobId}</div>` : ""}
               ${driver.customer ? `<div><b>Customer:</b> ${driver.customer}</div>` : ""}
               ${driver.pickup ? `<div><b>Route:</b> ${driver.pickup} &rarr; ${driver.dropoff}</div>` : ""}
             </div>
@@ -638,7 +644,15 @@ export function LiveUSMap() {
               </div>
 
               <div className="border-t border-slate-100 pt-2 flex justify-between items-center text-[11px] text-slate-500">
-                <span>{fleetDrivers.length} Drivers Online</span>
+                <span>
+                  <span className="text-emerald-700 font-medium">
+                    {fleetDrivers.filter((d) => d.isOnline).length} Online
+                  </span>
+                  {" • "}
+                  <span className="text-red-600 font-medium">
+                    {fleetDrivers.filter((d) => !d.isOnline).length} Offline
+                  </span>
+                </span>
                 <button
                   type="button"
                   onClick={handleRecenterFleet}
@@ -700,8 +714,10 @@ export function LiveUSMap() {
           <div className="flex items-start justify-between border-b border-slate-100 pb-2 mb-2">
             <div className="flex items-center gap-2">
               <div
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white border-2"
-                style={{ borderColor: selectedDriver.color }}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold text-white border-2 border-white shadow-sm"
+                style={{
+                  backgroundColor: selectedDriver.isOnline ? "#16a34a" : "#dc2626",
+                }}
               >
                 {selectedDriver.initials}
               </div>
@@ -722,6 +738,19 @@ export function LiveUSMap() {
           </div>
 
           <div className="space-y-1.5 text-xs text-slate-700">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">Connection:</span>
+              <span
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase"
+                style={{
+                  backgroundColor: selectedDriver.isOnline ? "#dcfce7" : "#fee2e2",
+                  color: selectedDriver.isOnline ? "#15803d" : "#b91c1c",
+                }}
+              >
+                ● {selectedDriver.isOnline ? "Online" : "Offline"}
+              </span>
+            </div>
+
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-slate-400">Live Status:</span>
               <span

@@ -309,8 +309,8 @@ export default function DashboardOverviewPage() {
               {onlineDrivers.length} Drivers Online
             </span>
             {offlineDrivers.length > 0 && (
-              <span className="flex items-center gap-1.5 text-xs font-normal text-slate-600 bg-white px-2.5 py-1 rounded border border-slate-200 shadow-2xs">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+              <span className="flex items-center gap-1.5 text-xs font-medium text-red-700 bg-red-50 px-2.5 py-1 rounded border border-red-200 shadow-2xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
                 {offlineDrivers.length} Offline
               </span>
             )}
