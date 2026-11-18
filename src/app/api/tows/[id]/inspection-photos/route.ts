@@ -81,6 +81,31 @@ export async function POST(
     stored[cleanId] = updated;
     saveInspectionPhotos(stored);
 
+    // Also persist to Cloud Backend PostgreSQL vehicles table so it is accessible everywhere
+    try {
+      const backendUrl =
+        process.env.API_BASE_URL ||
+        process.env.NEXT_PUBLIC_API_BASE_URL ||
+        "https://bec-api-towing-backend.3t5o2t.easypanel.host";
+      const photos = updated.inspection_photos || {};
+      await fetch(`${backendUrl}/api/vehicles`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          firebase_uid: `INSP_${cleanId}`,
+          make: "Pre-Tow Inspection",
+          model: cleanId,
+          year: 2026,
+          license_plate: cleanId,
+          photo_url: photos.front || "",
+          plate_image_url: photos.back || photos.rear || "",
+          asset_path: photos.left || "",
+          nickname: photos.right || "",
+        }),
+        signal: AbortSignal.timeout(3500),
+      });
+    } catch (_) {}
+
     return NextResponse.json({
       success: true,
       message: "Inspection photos saved successfully",

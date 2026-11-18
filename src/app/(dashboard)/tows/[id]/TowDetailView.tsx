@@ -363,7 +363,9 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                   { key: "left", label: "Left (Driver Side)", icon: "⬅️" },
                   { key: "right", label: "Right (Pass. Side)", icon: "➡️" },
                 ].map(({ key, label, icon }) => {
-                  const photoUrl = data.inspection_photos?.[key];
+                  const photoUrl =
+                    data.inspection_photos?.[key] ||
+                    (key === "back" ? data.inspection_photos?.rear : undefined);
                   return (
                     <div
                       key={key}

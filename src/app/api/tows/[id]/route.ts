@@ -2,17 +2,66 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-function getInspectionPhotosForJob(cleanId: string) {
+async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
+  // 1. Check local cached file
   try {
     const file = path.join(process.cwd(), "data", "inspection_photos.json");
-    if (!fs.existsSync(file)) return null;
-    const raw = fs.readFileSync(file, "utf-8");
-    const json = JSON.parse(raw);
-    const item = json[cleanId] || json[`TW-${cleanId}`] || json[cleanId.replace("TW-", "")];
-    return item?.inspection_photos || null;
-  } catch (_) {
-    return null;
-  }
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, "utf-8");
+      const json = JSON.parse(raw);
+      const item = json[cleanId] || json[`TW-${cleanId}`] || json[cleanId.replace("TW-", "")];
+      if (item?.inspection_photos && (item.inspection_photos.front || item.inspection_photos.back)) {
+        return item.inspection_photos;
+      }
+    }
+  } catch (_) {}
+
+  // 2. Fetch from Cloud Backend Postgres vehicles table
+  try {
+    const idsToTry = [
+      `INSP_${cleanId}`,
+      `INSP_TW-${cleanId.replace("TW-", "")}`,
+      cleanId,
+    ];
+    for (const uid of idsToTry) {
+      const res = await fetch(`${backendUrl}/api/vehicles?firebase_uid=${encodeURIComponent(uid)}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(3500),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const v = json.data?.[0];
+        if (v && (v.photo_url || v.plate_image_url || v.asset_path || v.nickname)) {
+          const photos = {
+            front: v.photo_url || null,
+            back: v.plate_image_url || null,
+            left: v.asset_path || null,
+            right: v.nickname || null,
+          };
+
+          // Cache locally to data/inspection_photos.json
+          try {
+            const file = path.join(process.cwd(), "data", "inspection_photos.json");
+            const dir = path.dirname(file);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            let stored: Record<string, any> = {};
+            if (fs.existsSync(file)) stored = JSON.parse(fs.readFileSync(file, "utf-8"));
+            stored[cleanId] = {
+              job_id: cleanId,
+              inspection_photos: photos,
+              uploaded_at: v.updated_at || v.created_at || new Date().toISOString(),
+              is_complete: Boolean(photos.front && photos.back && photos.left && photos.right),
+            };
+            fs.writeFileSync(file, JSON.stringify(stored, null, 2), "utf-8");
+          } catch (_) {}
+
+          return photos;
+        }
+      }
+    }
+  } catch (_) {}
+
+  return null;
 }
 
 export async function GET(
@@ -65,7 +114,7 @@ export async function GET(
               raw_id: cleanId,
               customer_name: custName || "Madhavan M.047",
               customer_phone: custPhone || "+91 97864 53128",
-              inspection_photos: t.inspection_photos || getInspectionPhotosForJob(cleanId),
+              inspection_photos: t.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl)),
             },
           });
         }
@@ -93,7 +142,7 @@ export async function GET(
                 ...match,
                 id: `#${cleanId}`,
                 raw_id: cleanId,
-                inspection_photos: match.inspection_photos || getInspectionPhotosForJob(cleanId),
+                inspection_photos: match.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl)),
               },
             });
           }
@@ -120,7 +169,7 @@ export async function GET(
         total_cost: "$92.45",
         payment_method: "In-App Tow Pay",
         eta_or_duration: "4-8 min",
-        inspection_photos: getInspectionPhotosForJob(cleanId),
+        inspection_photos: await getInspectionPhotosForJob(cleanId, backendUrl),
         created_at: new Date().toISOString(),
       },
     });
