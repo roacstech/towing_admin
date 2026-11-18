@@ -129,6 +129,20 @@ export async function PUT(
     const adminKey = process.env.ADMIN_API_KEY || "central-towing-admin-key";
 
     try {
+      if (body.driver_lat != null && body.driver_lng != null) {
+        try {
+          await fetch(`${backendUrl}/api/tows/${encodeURIComponent(cleanId)}/driver-location`, {
+            method: "PUT",
+            headers: {
+              "x-admin-key": adminKey,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(6000),
+          });
+        } catch (_) {}
+      }
+
       if (body.driver_name || body.driver_id) {
         try {
           await fetch(`${backendUrl}/api/tows/${encodeURIComponent(cleanId)}/accept`, {
@@ -138,7 +152,7 @@ export async function PUT(
               "content-type": "application/json",
             },
             body: JSON.stringify(body),
-            signal: AbortSignal.timeout(3000),
+            signal: AbortSignal.timeout(6000),
           });
         } catch (_) {}
       }

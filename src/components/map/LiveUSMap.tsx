@@ -128,10 +128,17 @@ export function LiveUSMap() {
           // Find active tow for this driver (must be actively in progress)
           const assignedTow = apiTows.find(
             (t: any) => {
+              const towDriverName = (t.driver_name || "").toLowerCase().trim();
+              const dName = name.toLowerCase().trim();
+              const towDriverId = String(t.driver_id || "").toLowerCase();
+              const dIdStr = String(d.id).toLowerCase();
+
               const matchesDriver =
-                t.driver_id === `DRV-${d.id}` ||
-                (t.driver_name && t.driver_name.toLowerCase().includes(name.toLowerCase())) ||
-                (t.driver_id && String(t.driver_id).includes(String(d.id)));
+                (towDriverName && (towDriverName.includes(dName) || dName.includes(towDriverName))) ||
+                towDriverId === `drv-${dIdStr}` ||
+                towDriverId === dIdStr ||
+                towDriverId.includes(dIdStr);
+
               if (!matchesDriver) return false;
               const s = (t.status || "").toLowerCase().trim();
               return ["accepted", "en_route", "on_scene", "arrived", "towing", "in_progress", "active", "arrived_dropoff"].includes(s);
