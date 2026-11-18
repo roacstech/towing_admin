@@ -329,7 +329,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
             </Card>
           )}
 
-          {/* Pre-Tow 4-Side Inspection Photos Card (Mandatory S3 Uploaded Photos) */}
+          {/* Pre-Tow 4-Side Inspection Photos Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-800">
@@ -343,7 +343,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                 data.inspection_photos.right) ? (
                 <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
                   <ShieldCheck className="h-3 w-3 text-emerald-600" />
-                  AWS S3 Verified
+                  Inspection Verified
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
@@ -391,9 +391,6 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                               Enlarge
                             </span>
                           </div>
-                          <span className="absolute bottom-1 right-1 rounded bg-emerald-600/90 px-1 py-0.5 text-[8px] font-bold text-white">
-                            S3
-                          </span>
                         </div>
                       ) : (
                         <div className="flex aspect-4/3 w-full flex-col items-center justify-center rounded border border-dashed border-slate-300 bg-white text-slate-400">
@@ -539,7 +536,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 <h3 className="text-sm font-semibold text-slate-800">
-                  {previewPhoto.label} - AWS S3 Verification
+                  {previewPhoto.label} - Condition Inspection
                 </h3>
               </div>
               <div className="flex items-center gap-2">
@@ -550,7 +547,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                   className="inline-flex items-center gap-1 rounded bg-slate-100 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200 transition-colors"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Open Full Link</span>
+                  <span>View Full Image</span>
                 </a>
                 <button
                   type="button"
@@ -569,7 +566,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
               />
             </div>
             <p className="text-[10px] text-slate-400 truncate mt-2">
-              S3 Storage URI: {previewPhoto.url}
+              Photo URL: {previewPhoto.url}
             </p>
           </div>
         </div>

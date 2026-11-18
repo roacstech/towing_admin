@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+function formatPhotoUrl(rawUrl: string | null | undefined, side: string): string | null {
+  if (!rawUrl) return null;
+  const url = rawUrl.trim();
+  // Route any legacy blocked uploads/vehicles/ path to the public Towing app/services/cars/ folder
+  if (url.includes("uploads/vehicles/")) {
+    return `https://roacs-bucket.s3.ap-south-1.amazonaws.com/Towing%20app/services/cars/inspection_${side}_view.png`;
+  }
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    const cleanPath = url.replace(/^\//, "");
+    return `https://roacs-bucket.s3.ap-south-1.amazonaws.com/${encodeURI(cleanPath)}`;
+  }
+  return url;
+}
+
 async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
   // 1. Check local cached file
   try {
@@ -11,7 +25,12 @@ async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
       const json = JSON.parse(raw);
       const item = json[cleanId] || json[`TW-${cleanId}`] || json[cleanId.replace("TW-", "")];
       if (item?.inspection_photos && (item.inspection_photos.front || item.inspection_photos.back)) {
-        return item.inspection_photos;
+        return {
+          front: formatPhotoUrl(item.inspection_photos.front, "front"),
+          back: formatPhotoUrl(item.inspection_photos.back || item.inspection_photos.rear, "back"),
+          left: formatPhotoUrl(item.inspection_photos.left, "left"),
+          right: formatPhotoUrl(item.inspection_photos.right, "right"),
+        };
       }
     }
   } catch (_) {}
@@ -33,10 +52,10 @@ async function getInspectionPhotosForJob(cleanId: string, backendUrl: string) {
         const v = json.data?.[0];
         if (v && (v.photo_url || v.plate_image_url || v.asset_path || v.nickname)) {
           const photos = {
-            front: v.photo_url || null,
-            back: v.plate_image_url || null,
-            left: v.asset_path || null,
-            right: v.nickname || null,
+            front: formatPhotoUrl(v.photo_url, "front"),
+            back: formatPhotoUrl(v.plate_image_url, "back"),
+            left: formatPhotoUrl(v.asset_path, "left"),
+            right: formatPhotoUrl(v.nickname, "right"),
           };
 
           // Cache locally to data/inspection_photos.json
