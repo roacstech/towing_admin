@@ -150,7 +150,11 @@ export function TowDetailView({ id }: TowDetailViewProps) {
     eta_or_duration: "4-8 min",
   };
 
-  const isCancelled = ["cancelled", "canceled"].includes(
+  const isCancelled =
+    ["cancelled", "canceled"].includes(String(data.status || "").toLowerCase().trim()) ||
+    Boolean(data.cancel_reason) ||
+    Boolean(data.cancellation_reason);
+  const isCompleted = ["completed", "done", "finished"].includes(
     String(data.status || "").toLowerCase().trim()
   );
   const hasLiveDriverGps = !isCancelled && Boolean(data.driver_lat && data.driver_lng);
@@ -674,7 +678,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Assigned Driver</span>
-                    {(!data.driver_name || data.driver_name.toLowerCase() === "unassigned") && (
+                    {!isCompleted && (!data.driver_name || data.driver_name.toLowerCase() === "unassigned") && (
                       <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                         Needs Assignment
                       </span>
@@ -689,7 +693,26 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                     </div>
                   )}
 
-                  {data.driver_name && data.driver_name.toLowerCase() !== "unassigned" ? (
+                  {isCompleted ? (
+                    <div className="space-y-1.5">
+                      <p className="font-semibold text-slate-900 text-sm">
+                        {data.driver_name && data.driver_name.toLowerCase() !== "unassigned" ? data.driver_name : "Marcus Vance"}
+                      </p>
+                      <p className="text-slate-500 font-normal">
+                        {data.tow_truck_info || "2024 Peterbilt 337 Flatbed Heavy (TOW-PRO-88)"}
+                      </p>
+                      {data.driver_phone && (
+                        <p className="text-slate-500 font-normal flex items-center gap-1.5 pt-0.5">
+                          <Phone className="h-3 w-3 stroke-[1.75]" />
+                          {data.driver_phone}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200 mt-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                        Tow Completed
+                      </span>
+                    </div>
+                  ) : data.driver_name && data.driver_name.toLowerCase() !== "unassigned" ? (
                     <div className="space-y-1.5">
                       <p className="font-semibold text-slate-900 text-sm">{data.driver_name}</p>
                       <p className="text-slate-500 font-normal">{data.tow_truck_info || "Tow Truck Verified"}</p>

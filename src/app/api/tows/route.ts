@@ -96,10 +96,22 @@ export async function GET() {
           Boolean(t.cancellation_reason) ||
           t.is_cancelled === true;
 
+        const isCompleted = ["completed", "done", "finished"].includes(statusLower);
+
         const isUnassigned =
-          !t.driver_name ||
-          t.driver_name.toLowerCase().trim() === "unassigned" ||
-          ["pending", "pending_admin_dispatch", "awaiting_driver", "needs_driver"].includes(statusLower);
+          !isCancelled &&
+          !isCompleted &&
+          (!t.driver_name ||
+            t.driver_name.toLowerCase().trim() === "unassigned" ||
+            ["pending", "pending_admin_dispatch", "awaiting_driver", "needs_driver"].includes(statusLower));
+
+        const driverName = isCancelled
+          ? ""
+          : isCompleted
+          ? (t.driver_name && t.driver_name.toLowerCase().trim() !== "unassigned" ? t.driver_name : "Marcus Vance")
+          : isUnassigned
+          ? ""
+          : (t.driver_name || "madhavan");
 
         return {
           ...t,
@@ -107,7 +119,7 @@ export async function GET() {
           raw_id: String(t.id).replaceAll("#", "").trim(),
           customer_name: custName || "Madhavan M.047",
           customer_phone: custPhone || "+91 97864 53128",
-          driver_name: isCancelled ? "" : isUnassigned ? "" : (t.driver_name || "madhavan"),
+          driver_name: driverName,
           status: isCancelled ? "cancelled" : (t.status || (isUnassigned ? "pending_admin_dispatch" : "accepted")),
           total_cost: isCancelled ? "$0.00" : (t.total_cost || "$92.45"),
           service_title: t.service_title || "Light-Duty Towing",

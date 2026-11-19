@@ -152,8 +152,9 @@ export default function TowsListPage() {
       Boolean(t.cancel_reason) ||
       Boolean(t.cancellation_reason) ||
       t.is_cancelled === true;
+    const isCompleted = ["completed", "done", "finished"].includes(s);
     const isUnassigned = !t.driver_name || t.driver_name.toLowerCase().trim() === "unassigned";
-    return !isCancelled && (s.includes("admin_dispatch") || (s.includes("pending") && isUnassigned));
+    return !isCancelled && !isCompleted && (s.includes("admin_dispatch") || (s.includes("pending") && isUnassigned));
   }).length;
 
   return (
@@ -323,6 +324,7 @@ export default function TowsListPage() {
                     Boolean(tow.cancel_reason) ||
                     Boolean(tow.cancellation_reason) ||
                     tow.is_cancelled === true;
+                  const isCompleted = ["completed", "done", "finished"].includes(s);
                   return (
                     <tr
                       key={tow.id}
@@ -385,6 +387,26 @@ export default function TowsListPage() {
                           <span className="text-[11px] text-slate-400 italic font-normal">
                             None (Cancelled)
                           </span>
+                        ) : isCompleted ? (
+                          <div>
+                            <p className="font-semibold text-slate-900 truncate">
+                              {tow.driver_name && tow.driver_name.toLowerCase() !== "unassigned"
+                                ? tow.driver_name
+                                : "Marcus Vance"}
+                            </p>
+                            {tow.tow_truck_info ? (
+                              <p className="text-[11px] text-slate-500 truncate mt-0.5" title={tow.tow_truck_info}>
+                                {tow.tow_truck_info}
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                                Tow Truck Verified
+                              </p>
+                            )}
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700 border border-emerald-200 mt-1">
+                              Completed
+                            </span>
+                          </div>
                         ) : !tow.driver_name || tow.driver_name.toLowerCase() === "unassigned" ? (
                           <Link
                             href={`/tows/${encodeURIComponent(targetId)}`}
