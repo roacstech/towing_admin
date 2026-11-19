@@ -30,6 +30,9 @@ interface TowItem {
   total_cost?: string;
   payment_method?: string;
   eta_or_duration?: string;
+  cancel_reason?: string;
+  cancellation_reason?: string;
+  is_cancelled?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -144,7 +147,11 @@ export default function TowsListPage() {
 
   const needsAdminCount = tows.filter((t) => {
     const s = (t.status || "").toLowerCase().trim();
-    const isCancelled = ["cancelled", "canceled"].includes(s);
+    const isCancelled =
+      s.includes("cancel") ||
+      Boolean(t.cancel_reason) ||
+      Boolean(t.cancellation_reason) ||
+      t.is_cancelled === true;
     const isUnassigned = !t.driver_name || t.driver_name.toLowerCase().trim() === "unassigned";
     return !isCancelled && (s.includes("admin_dispatch") || (s.includes("pending") && isUnassigned));
   }).length;
@@ -310,9 +317,12 @@ export default function TowsListPage() {
               ) : (
                 filteredTows.map((tow) => {
                   const targetId = tow.raw_id || String(tow.id).replaceAll("#", "").trim();
-                  const isCancelled = ["cancelled", "canceled"].includes(
-                    String(tow.status || "").toLowerCase().trim()
-                  );
+                  const s = String(tow.status || "").toLowerCase().trim();
+                  const isCancelled =
+                    s.includes("cancel") ||
+                    Boolean(tow.cancel_reason) ||
+                    Boolean(tow.cancellation_reason) ||
+                    tow.is_cancelled === true;
                   return (
                     <tr
                       key={tow.id}
@@ -409,7 +419,7 @@ export default function TowsListPage() {
                       <td className="w-[110px] min-w-[110px] px-4 py-3.5 align-top text-right">
                         {isCancelled ? (
                           <>
-                            <div className="font-semibold text-slate-400 text-xs">—</div>
+                            <div className="font-semibold text-slate-400 text-xs">$0.00</div>
                             <div className="text-[10px] text-rose-500 font-semibold mt-0.5">Cancelled</div>
                           </>
                         ) : (
