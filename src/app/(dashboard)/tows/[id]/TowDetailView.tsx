@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Phone, RefreshCw, Smartphone, Navigation, Radio, CheckCircle2, Camera, ExternalLink, X, ShieldCheck, XCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Phone, RefreshCw, Smartphone, Navigation, Radio, CheckCircle2, Camera, ExternalLink, X, ShieldCheck, XCircle, Star, MessageSquare } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TowStatusBadge } from "@/components/tows/TowStatusBadge";
@@ -19,6 +19,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
   const [assigning, setAssigning] = useState(false);
   const [assignSuccess, setAssignSuccess] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; label: string } | null>(null);
+  const [review, setReview] = useState<any>(null);
   const isInitialMount = useRef(true);
 
   const loadDrivers = async () => {
@@ -31,6 +32,26 @@ export function TowDetailView({ id }: TowDetailViewProps) {
     } catch (_) {}
   };
 
+  const loadReview = async (towId: string) => {
+    try {
+      const res = await fetch("/api/admin/reviews", { cache: "no-store" });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const cleanTarget = towId.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const match = json.data.find((r: any) => {
+          const rTowId = String(r.towId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const rId = String(r.id || "").toLowerCase().replace("rev", "").replace(/[^a-z0-9]/g, "");
+          return (
+            rTowId === cleanTarget ||
+            rId === cleanTarget ||
+            (cleanTarget.length > 3 && (rTowId.includes(cleanTarget) || cleanTarget.includes(rTowId)))
+          );
+        });
+        if (match) setReview(match);
+      }
+    } catch (_) {}
+  };
+
   const loadDetail = async (isManual = false) => {
     if (isInitialMount.current) setLoading(true);
     try {
@@ -38,6 +59,11 @@ export function TowDetailView({ id }: TowDetailViewProps) {
       const json = await res.json();
       if (json.success && json.data) {
         setTow(json.data);
+        if (json.data.customer_review) {
+          setReview(json.data.customer_review);
+        } else {
+          loadReview(id);
+        }
       }
     } catch (_) {
     } finally {
@@ -87,6 +113,7 @@ export function TowDetailView({ id }: TowDetailViewProps) {
   useEffect(() => {
     loadDetail();
     loadDrivers();
+    loadReview(id);
 
     // Auto poll live detail every 3s to reflect moving driver telemetry
     const interval = setInterval(() => {
@@ -449,6 +476,138 @@ export function TowDetailView({ id }: TowDetailViewProps) {
               </div>
             </Card>
           )}
+
+          {/* Customer Rating & Review Card */}
+          {!isCancelled && (
+            <Card className="border-amber-200/90 bg-white shadow-2xs overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between border-b border-amber-100/60 bg-gradient-to-r from-amber-50/70 to-orange-50/30 pb-3">
+                <CardTitle className="flex items-center gap-2 text-xs font-semibold text-slate-800">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500 text-white shadow-2xs">
+                    <Star className="h-3.5 w-3.5 fill-white" />
+                  </div>
+                  <span>Customer Rating &amp; Review</span>
+                </CardTitle>
+                {review ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-200 shadow-2xs">
+                    <span className="flex items-center text-amber-500">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3 w-3 ${
+                            i < Math.round(Number(review.rating) || 5)
+                              ? "fill-amber-400 text-amber-400"
+                              : "fill-slate-200 text-slate-200"
+                          }`}
+                        />
+                      ))}
+                    </span>
+                    <span className="ml-0.5">{(Number(review.rating) || 5).toFixed(1)} / 5.0</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 border border-slate-200">
+                    Review Pending
+                  </span>
+                )}
+              </CardHeader>
+              <div className="p-4 space-y-3">
+                {review ? (
+                  <div className="space-y-3">
+                    {/* Customer Review Profile & Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 text-white font-bold text-xs shadow-xs">
+                          {(review.customerName || data.customer_name || "C").charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-bold text-slate-900">
+                              {review.customerName || data.customer_name}
+                            </h4>
+                            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[9.5px] font-semibold text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600" />
+                              Verified Customer
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Submitted on{" "}
+                            {review.createdAt
+                              ? new Date(review.createdAt).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "Recently"}{" "}
+                            • Dispatch #{data.raw_id || String(data.id).replaceAll("#", "")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Star Rating Breakdown */}
+                      <div className="flex items-center gap-2 self-start sm:self-center bg-amber-50/70 border border-amber-200/60 rounded-lg px-2.5 py-1">
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3.5 w-3.5 ${
+                                i < Math.round(Number(review.rating) || 5)
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "fill-slate-200 text-slate-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[11px] font-bold text-amber-900">
+                          {Math.round(Number(review.rating) || 5) === 5 ? "5.0 Outstanding" : `${Number(review.rating).toFixed(1)} Rated`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Customer Feedback Comment Callout */}
+                    <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-3.5 relative">
+                      <div className="text-[10px] font-semibold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3 text-amber-600" />
+                        <span>Customer Feedback</span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-800 leading-relaxed italic">
+                        &ldquo;{review.comment || "Prompt arrival and professional towing service!"}&rdquo;
+                      </p>
+
+                      {/* Quick Compliment Tags / Chips */}
+                      {review.comment && (
+                        <div className="mt-2.5 flex flex-wrap gap-1.5 pt-1 border-t border-amber-200/50">
+                          {review.comment
+                            .split(",")
+                            .map((chunk: string) => chunk.trim())
+                            .filter((c: string) => c.length > 2 && c.length < 35)
+                            .map((tag: string, idx: number) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-[10.5px] font-medium text-slate-700 border border-amber-200/70 shadow-2xs"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                {tag}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-2">
+                      <MessageSquare className="h-4 w-4 stroke-[1.5]" />
+                    </div>
+                    <p className="text-xs font-semibold text-slate-700">Awaiting Customer Feedback</p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mt-0.5">
+                      The customer has not yet submitted a review or star rating for this completed tow service.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar: Customer, Driver, Fare */}
@@ -463,6 +622,15 @@ export function TowDetailView({ id }: TowDetailViewProps) {
                 <Phone className="h-3 w-3 stroke-[1.75]" />
                 {data.customer_phone || "+91 97864 53128"}
               </p>
+              {review && (
+                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 font-normal">Review Rating:</span>
+                  <span className="font-semibold text-amber-700 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    {(Number(review.rating) || 5).toFixed(1)} / 5.0
+                  </span>
+                </div>
+              )}
             </div>
           </Card>
 

@@ -1,6 +1,29 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { loadStoredReviews } from "../../admin/reviews/route";
+
+function findReviewForTow(cleanId: string) {
+  try {
+    const reviews = loadStoredReviews();
+    const target = cleanId.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!target) return null;
+    return (
+      reviews.find((r) => {
+        const rTowId = String(r.towId || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const rId = String(r.id || "").toLowerCase().replace("rev", "").replace(/[^a-z0-9]/g, "");
+        return (
+          rTowId === target ||
+          rId === target ||
+          (rTowId.length > 3 && target.includes(rTowId)) ||
+          (target.length > 3 && rTowId.includes(target))
+        );
+      }) || null
+    );
+  } catch (_) {
+    return null;
+  }
+}
 
 function formatPhotoUrl(rawUrl: string | null | undefined): string | null {
   if (!rawUrl) return null;
@@ -141,6 +164,7 @@ export async function GET(
               eta_or_duration: isCancelled ? "Cancelled" : t.eta_or_duration,
               cancel_reason: t.cancel_reason || t.cancellation_reason || (isCancelled ? "Customer cancelled request" : undefined),
               inspection_photos: isCancelled ? null : (t.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl))),
+              customer_review: isCancelled ? null : findReviewForTow(cleanId),
             },
           });
         }
@@ -179,6 +203,7 @@ export async function GET(
                 eta_or_duration: isCancelled ? "Cancelled" : match.eta_or_duration,
                 cancel_reason: match.cancel_reason || match.cancellation_reason || (isCancelled ? "Customer cancelled request" : undefined),
                 inspection_photos: isCancelled ? null : (match.inspection_photos || (await getInspectionPhotosForJob(cleanId, backendUrl))),
+                customer_review: isCancelled ? null : findReviewForTow(cleanId),
               },
             });
           }
@@ -206,6 +231,7 @@ export async function GET(
         payment_method: "In-App Tow Pay",
         eta_or_duration: "4-8 min",
         inspection_photos: await getInspectionPhotosForJob(cleanId, backendUrl),
+        customer_review: findReviewForTow(cleanId),
         created_at: new Date().toISOString(),
       },
     });
